@@ -11,9 +11,17 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
-
     show-sql: true
-
     properties:
       hibernate:
         format_sql: true
+
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 20MB
+
+cloudinary:
+  cloud-name: ${CLOUDINARY_CLOUD_NAME:jdchifab}
+  api-key: ${CLOUDINARY_API_KEY:sua_chave_aqui}
+  api-secret: ${CLOUDINARY_API_SECRET:seu_secret_aqui}
