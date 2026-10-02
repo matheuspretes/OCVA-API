@@ -86,6 +86,25 @@ public class EnsaioController {
         return repository.save(ensaio);
     }
 
+    @DeleteMapping("/{ensaioId}/presenca/{musicoId}")
+    public Ensaio removerPresenca(
+            @PathVariable Long ensaioId,
+            @PathVariable Long musicoId) {
+        Ensaio ensaio = repository.findById(ensaioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ensaio não encontrado"));
+        musicoRepository.findById(musicoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Músico não encontrado"));
+
+        if (ensaio.getPresencas() != null) {
+            ensaio.getPresencas().removeIf(item -> musicoId.equals(item.getId()));
+        }
+        if (ensaio.getFaltas() != null) {
+            ensaio.getFaltas().removeIf(item -> musicoId.equals(item.getId()));
+        }
+
+        return repository.save(ensaio);
+    }
+
     @DeleteMapping("/{id}")
     public Ensaio excluir(@PathVariable long id) {
         Ensaio ensaio = repository.findById(id).orElse(null);
