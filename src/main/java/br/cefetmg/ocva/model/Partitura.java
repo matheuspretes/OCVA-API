@@ -28,5 +28,22 @@ public class Partitura {
 
     @Column(nullable = false, length = 255)
     private String publicId;
-}
 
+    @Column(length = 120)
+    private String compositor;
+
+    @Column(length = 80)
+    private String instrumento;
+
+    @Column(length = 80)
+    private String categoria;
+
+    @Column(length = 160)
+    private String evento;
+
+    @Column(length = 255)
+    private String nomeArquivo;
+
+    @Column(length = 20)
+    private String dataPublicacao;
+}

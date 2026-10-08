@@ -33,7 +33,11 @@ public class PartituraController {
     @PostMapping("/upload")
     public ResponseEntity<?> uploadPartitura(
         @RequestParam("partitura") MultipartFile file,
-        @RequestParam("nome") String nome
+        @RequestParam("nome") String nome,
+        @RequestParam(required = false, defaultValue = "") String compositor,
+        @RequestParam(required = false, defaultValue = "") String instrumento,
+        @RequestParam(required = false, defaultValue = "") String categoria,
+        @RequestParam(required = false, defaultValue = "") String evento
     ) {
         if (file.isEmpty() || ! "application/pdf".equalsIgnoreCase(file.getContentType())) {
             return ResponseEntity.badRequest().body("Envie um arquivo PDF válido.");
@@ -54,10 +58,10 @@ public class PartituraController {
             );
 
             Partitura partitura = new Partitura(
-                null,
-                nome.trim(),
-                (String) uploadResult.get("secure_url"),
-                (String) uploadResult.get("public_id")
+                null, nome.trim(), (String) uploadResult.get("secure_url"),
+                (String) uploadResult.get("public_id"), compositor.trim(),
+                instrumento.trim(), categoria.trim(), evento.trim(),
+                file.getOriginalFilename(), java.time.LocalDate.now().toString()
             );
             return ResponseEntity.status(HttpStatus.CREATED).body(repository.save(partitura));
         } catch (IOException exception) {
