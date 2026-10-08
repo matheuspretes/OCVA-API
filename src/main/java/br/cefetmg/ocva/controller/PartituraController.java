@@ -1,55 +1,79 @@
 package br.cefetmg.ocva.controller;
 
+import br.cefetmg.ocva.model.Partitura;
+import br.cefetmg.ocva.repository.PartituraRepository;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/partituras")
+@CrossOrigin(origins = "*")
 public class PartituraController {
+    private final Cloudinary cloudinary;
+    private final PartituraRepository repository;
 
-    @Autowired
-    private Cloudinary cloudinary;
+    public PartituraController(Cloudinary cloudinary, PartituraRepository repository) {
+        this.cloudinary = cloudinary;
+        this.repository = repository;
+    }
+
+    @GetMapping
+    public List<Partitura> listar() {
+        return repository.findAll();
+    }
 
     @PostMapping("/upload")
-    public ResponseEntity<?> uploadPartitura(@RequestParam("partitura") MultipartFile file) {
-        if (file.isEmpty()) {
-            return ResponseEntity.badRequest().body("Nenhum arquivo enviado.");
+    public ResponseEntity<?> uploadPartitura(
+        @RequestParam("partitura") MultipartFile file,
+        @RequestParam("nome") String nome
+    ) {
+        if (file.isEmpty() || ! "application/pdf".equalsIgnoreCase(file.getContentType())) {
+            return ResponseEntity.badRequest().body("Envie um arquivo PDF válido.");
+        }
+        if (nome == null || nome.isBlank()) {
+            return ResponseEntity.badRequest().body("Informe o nome da partitura.");
         }
 
         try {
-            // Upload para o Cloudinary
-            // "resource_type", "auto" garante que funcione tanto para PDF quanto para imagem
-            Map uploadResult = cloudinary.uploader().upload(
+            Map<?, ?> uploadResult = cloudinary.uploader().upload(
                 file.getBytes(),
                 ObjectUtils.asMap(
                     "folder", "orquestra/partituras",
-                    "resource_type", "auto"
+                    "resource_type", "raw",
+                    "use_filename", true,
+                    "unique_filename", true
                 )
             );
 
-            String url = (String) uploadResult.get("secure_url");
-            String publicId = (String) uploadResult.get("public_id");
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("sucesso", true);
-            response.put("url", url);
-            response.put("public_id", publicId);
-            response.put("mensagem", "Partitura enviada com sucesso!");
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-
-        } catch (IOException e) {
+            Partitura partitura = new Partitura(
+                null,
+                nome.trim(),
+                (String) uploadResult.get("secure_url"),
+                (String) uploadResult.get("public_id")
+            );
+            return ResponseEntity.status(HttpStatus.CREATED).body(repository.save(partitura));
+        } catch (IOException exception) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Erro ao enviar partitura para o Cloudinary: " + e.getMessage());
+                .body("Erro ao enviar partitura para o Cloudinary.");
         }
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> excluir(@PathVariable Long id) throws Exception {
+        Partitura partitura = repository.findById(id).orElse(null);
+        if (partitura == null) {
+            return ResponseEntity.notFound().build();
+        }
+        cloudinary.uploader().destroy(partitura.getPublicId(), ObjectUtils.asMap("resource_type", "raw"));
+        repository.delete(partitura);
+        return ResponseEntity.noContent().build();
     }
 }
