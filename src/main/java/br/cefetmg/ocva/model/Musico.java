@@ -38,6 +38,9 @@ public class Musico {
     @Column(length=60, nullable = false)
     private String instrumento;
 
+    @Column(length = 8)
+    private String codigoAcesso;
+
     @Column
     private Boolean ativo = true;
 }
