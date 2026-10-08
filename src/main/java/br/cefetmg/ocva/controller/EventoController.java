@@ -74,7 +74,13 @@ public class EventoController {
             }
 
             long presencas = ensaioRepository.contarPresencasDoMusico(musico.getId());
-            if (presencas < 2) {
+            long faltas = ensaioRepository.contarFaltasDoMusico(musico.getId());
+            long totalMarcacoes = presencas + faltas;
+            double percentualDeFaltas = totalMarcacoes > 0
+                ? (double) faltas / totalMarcacoes
+                : 1;
+
+            if (presencas < 2 || percentualDeFaltas > 0.25) {
                 String nome = musico.getNome() != null ? musico.getNome() : ("ID " + musico.getId());
                 musicosInvalidos.add(nome);
             }
@@ -83,7 +89,8 @@ public class EventoController {
         if (!musicosInvalidos.isEmpty()) {
             throw new ResponseStatusException(
                 HttpStatus.BAD_REQUEST,
-                "Só é possível adicionar músicos com pelo menos 2 presenças em ensaios: " + String.join(", ", musicosInvalidos)
+                "Só é possível adicionar músicos com pelo menos 2 presenças e no máximo 25% de faltas: "
+                    + String.join(", ", musicosInvalidos)
             );
         }
     }

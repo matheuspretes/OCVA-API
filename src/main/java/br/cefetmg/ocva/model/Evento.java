@@ -34,6 +34,12 @@ public class Evento {
     @Column(length = 120)
     private String titulo;
 
+    @Column(length = 160)
+    private String local;
+
+    @Column(columnDefinition = "TEXT")
+    private String banner;
+
     @ManyToMany
     @JoinTable(
         name = "evento_musico",

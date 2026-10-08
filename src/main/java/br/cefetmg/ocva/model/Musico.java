@@ -37,6 +37,7 @@ public class Musico {
 
     @Column(length=60, nullable = false)
     private String instrumento;
+
+    @Column
+    private Boolean ativo = true;
 }
-
-

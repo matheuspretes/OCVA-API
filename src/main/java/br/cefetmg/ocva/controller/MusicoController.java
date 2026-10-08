@@ -4,12 +4,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.fasterxml.jackson.annotation.JsonTypeInfo.Id;
-
 import br.cefetmg.ocva.model.Musico;
 import br.cefetmg.ocva.repository.MusicoRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -30,13 +27,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 @CrossOrigin(origins = "*")
 public class MusicoController {
 
-    
-    private static List <Musico> MusicoList;
     private MusicoRepository repository;
-    private static Long nextId = 1L;
-    {
-        MusicoList = new ArrayList<>();
-    }
 
     public MusicoController (MusicoRepository repository){
         this.repository = repository;
@@ -56,6 +47,9 @@ public class MusicoController {
     @PostMapping("")
     public Musico inserir(@RequestBody Musico musico) {
         musico.setId(null);
+        if (musico.getAtivo() == null) {
+            musico.setAtivo(true);
+        }
         repository.save(musico);
 
         return musico;
@@ -68,7 +62,7 @@ public class MusicoController {
               if(musico == null){
                  throw new ResponseStatusException(HttpStatus.NOT_FOUND,"Musico com id:"+ id +"não encontrado");
             }
-        repository.deleteById(id);;
+              repository.deleteById(id);
         return musico;
     } 
     
@@ -80,6 +74,10 @@ public class MusicoController {
                if(musico.getId() == null) {
                   throw new ResponseStatusException(HttpStatus.BAD_REQUEST,"id é obrigatório");
                }
+
+        if (musico.getAtivo() == null) {
+            musico.setAtivo(true);
+        }
     
         repository.save(musico);
         return musico;
@@ -89,6 +87,9 @@ public class MusicoController {
     public Musico login(@RequestParam String login, @RequestParam String senha) {
         Musico musico = repository.findByLoginAndSenha(login, senha)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Login ou senha inválidos"));
+        if (Boolean.FALSE.equals(musico.getAtivo())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário suspenso");
+        }
         return musico;
     }
     
