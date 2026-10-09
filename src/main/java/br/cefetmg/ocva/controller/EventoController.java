@@ -2,6 +2,7 @@ package br.cefetmg.ocva.controller;
 
 import java.util.List;
 import java.util.ArrayList;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,7 +18,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.cefetmg.ocva.model.Evento;
+import br.cefetmg.ocva.model.Musico;
 import br.cefetmg.ocva.repository.EventoRepository;
+import br.cefetmg.ocva.repository.MusicoRepository;
 
 @RestController
 @RequestMapping("/api/v1/eventos")
@@ -25,9 +28,11 @@ import br.cefetmg.ocva.repository.EventoRepository;
 public class EventoController {
 
     private final EventoRepository repository;
+    private final MusicoRepository musicoRepository;
 
-    public EventoController(EventoRepository repository) {
+    public EventoController(EventoRepository repository, MusicoRepository musicoRepository) {
         this.repository = repository;
+        this.musicoRepository = musicoRepository;
     }
 
     @GetMapping("")
@@ -47,12 +52,39 @@ public class EventoController {
     }
 
     @PutMapping("")
+    @Transactional
     public Evento alterar(@RequestBody Evento evento) {
         if (evento.getId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "id é obrigatório");
         }
 
-        return repository.save(evento);
+        Evento eventoExistente = repository.findById(evento.getId())
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "Evento com id: " + evento.getId() + " não encontrado"));
+
+        eventoExistente.setData(evento.getData());
+        eventoExistente.setDescricao(evento.getDescricao());
+        eventoExistente.setTitulo(evento.getTitulo());
+        eventoExistente.setLocal(evento.getLocal());
+        eventoExistente.setBanner(evento.getBanner());
+
+        List<Musico> musicos = evento.getMusicos() == null
+                ? new ArrayList<>()
+                : evento.getMusicos().stream()
+                        .map(musico -> {
+                            if (musico == null || musico.getId() == null) {
+                                throw new ResponseStatusException(
+                                        HttpStatus.BAD_REQUEST, "Todo músico deve possuir id");
+                            }
+                            return musicoRepository.findById(musico.getId())
+                                    .orElseThrow(() -> new ResponseStatusException(
+                                            HttpStatus.NOT_FOUND,
+                                            "Músico com id: " + musico.getId() + " não encontrado"));
+                        })
+                        .collect(Collectors.toList());
+        eventoExistente.setMusicos(musicos);
+
+        return eventoExistente;
     }
 
     @DeleteMapping("/{id}")
