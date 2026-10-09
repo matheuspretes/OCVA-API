@@ -28,7 +28,7 @@ public class Evento {
     @Column(length = 20, nullable = false)
     private String data;
 
-    @Column(length = 255, nullable = false)
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String descricao;
 
     @Column(length = 120)
