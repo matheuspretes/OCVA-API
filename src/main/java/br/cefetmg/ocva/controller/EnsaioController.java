@@ -1,9 +1,7 @@
 package br.cefetmg.ocva.controller;
 
 import java.util.List;
-import java.util.ArrayList;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,119 +10,58 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.transaction.annotation.Transactional;
 
 import br.cefetmg.ocva.model.Ensaio;
-import br.cefetmg.ocva.model.Musico;
-import br.cefetmg.ocva.repository.EnsaioRepository;
-import br.cefetmg.ocva.repository.MusicoRepository;
+import br.cefetmg.ocva.dto.EnsaioRequestDTO;
+import br.cefetmg.ocva.dto.EnsaioResponseDTO;
+import br.cefetmg.ocva.service.EnsaioService;
 
 @RestController
 @RequestMapping("/api/v1/ensaios")
 @CrossOrigin(origins = "*")
 public class EnsaioController {
 
-    private final EnsaioRepository repository;
-    private final MusicoRepository musicoRepository;
+    private final EnsaioService service;
 
-    public EnsaioController(EnsaioRepository repository, MusicoRepository musicoRepository) {
-        this.repository = repository;
-        this.musicoRepository = musicoRepository;
+    public EnsaioController(EnsaioService service) {
+        this.service = service;
     }
 
-    @GetMapping("")
-    public List<Ensaio> getAll() {
-        return repository.findAll();
+    @GetMapping
+    public List<EnsaioResponseDTO> listar() {
+        return service.listar();
     }
 
     @GetMapping("/{id}")
-    public Ensaio getById(@PathVariable Long id) {
-        return repository.findById(id).orElse(null);
+    public EnsaioResponseDTO buscarPorId(@PathVariable Long id) {
+        return service.buscarPorId(id);
     }
 
-    @PostMapping("")
-    public Ensaio inserir(@RequestBody Ensaio ensaio) {
-        ensaio.setId(null);
-        return repository.save(ensaio);
+    @PostMapping
+    public EnsaioResponseDTO inserir(@RequestBody EnsaioRequestDTO dto) {
+        return service.inserir(dto);
     }
 
-    @PutMapping("")
-    public Ensaio alterar(@RequestBody Ensaio ensaio) {
-        if (ensaio.getId() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "id é obrigatório");
-        }
-
-        return repository.save(ensaio);
+    @PutMapping
+    public EnsaioResponseDTO atualizar(@RequestBody EnsaioRequestDTO dto) {
+        return service.atualizar(dto);
     }
 
     @PutMapping("/{ensaioId}/presenca/{musicoId}")
-    public Ensaio marcarPresenca(
-            @PathVariable Long ensaioId,
-            @PathVariable Long musicoId,
-            @org.springframework.web.bind.annotation.RequestParam boolean presente) {
-        Ensaio ensaio = repository.findById(ensaioId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ensaio não encontrado"));
-        Musico musico = musicoRepository.findById(musicoId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Músico não encontrado"));
-
-        boolean jaPresente = ensaio.getPresencas() != null && ensaio.getPresencas().stream()
-                .anyMatch(item -> item.getId().equals(musicoId));
-        boolean jaAusente = ensaio.getFaltas() != null && ensaio.getFaltas().stream()
-                .anyMatch(item -> item.getId().equals(musicoId));
-        if (jaPresente || jaAusente) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "A presença deste músico já foi marcada");
-        }
-
-        if (ensaio.getPresencas() == null) {
-            ensaio.setPresencas(new ArrayList<>());
-        }
-        if (ensaio.getFaltas() == null) {
-            ensaio.setFaltas(new ArrayList<>());
-        }
-        (presente ? ensaio.getPresencas() : ensaio.getFaltas()).add(musico);
-        return repository.save(ensaio);
+    public EnsaioResponseDTO marcarPresenca(@PathVariable Long ensaioId, @PathVariable Long musicoId,
+            @RequestParam boolean presente) {
+        return service.marcarPresenca(ensaioId, musicoId, presente);
     }
 
     @DeleteMapping("/{ensaioId}/presenca/{musicoId}")
-    public Ensaio removerPresenca(
-            @PathVariable Long ensaioId,
-            @PathVariable Long musicoId) {
-        Ensaio ensaio = repository.findById(ensaioId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ensaio não encontrado"));
-        musicoRepository.findById(musicoId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Músico não encontrado"));
-
-        if (ensaio.getPresencas() != null) {
-            ensaio.getPresencas().removeIf(item -> musicoId.equals(item.getId()));
-        }
-        if (ensaio.getFaltas() != null) {
-            ensaio.getFaltas().removeIf(item -> musicoId.equals(item.getId()));
-        }
-
-        return repository.save(ensaio);
+    public EnsaioResponseDTO removerPresenca(@PathVariable Long ensaioId, @PathVariable Long musicoId) {
+        return service.removerPresenca(ensaioId, musicoId);
     }
 
     @DeleteMapping("/{id}")
-    @Transactional
-    public Ensaio excluir(@PathVariable long id) {
-        Ensaio ensaio = repository.findById(id).orElse(null);
-        if (ensaio == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ensaio com id: " + id + " não encontrado");
-        }
-
-        if (ensaio.getMusicos() != null) {
-            ensaio.getMusicos().clear();
-        }
-        if (ensaio.getPresencas() != null) {
-            ensaio.getPresencas().clear();
-        }
-        if (ensaio.getFaltas() != null) {
-            ensaio.getFaltas().clear();
-        }
-
-        repository.delete(ensaio);
-        return ensaio;
+    public EnsaioResponseDTO excluir(@PathVariable long id) {
+        return service.excluir(id);
     }
 }
