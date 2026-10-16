@@ -2,6 +2,7 @@ package br.cefetmg.ocva.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -134,7 +135,15 @@ public class EnsaioService {
         if (ids == null) {
             return new ArrayList<>();
         }
-        return ids.stream().map(this::buscarMusico).toList();
+        return ids.stream()
+                .map(id -> {
+                    if (id == null) {
+                        throw new ResponseStatusException(
+                                HttpStatus.BAD_REQUEST, "Todo músico deve possuir id");
+                    }
+                    return buscarMusico(id);
+                })
+                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     private Ensaio converter(EnsaioRequestDTO dto) {
