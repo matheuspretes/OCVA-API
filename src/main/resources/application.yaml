@@ -21,6 +21,11 @@ spring:
       max-file-size: 20MB
       max-request-size: 20MB
 
+server:
+  error:
+    # Envia a mensagem de erro (ex.: "Já existe um ensaio cadastrado neste dia.") para o front-end
+    include-message: always
+
 cloudinary:
   cloud-name: ${CLOUDINARY_CLOUD_NAME:jdchifab}
   api-key: ${CLOUDINARY_API_KEY:sua_chave_aqui}
