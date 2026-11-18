@@ -2,7 +2,9 @@ package br.cefetmg.ocva.model;
 
 import java.util.List;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -47,4 +49,19 @@ public class Evento {
         inverseJoinColumns = @JoinColumn(name = "musico_id")
     )
     private List<Musico> musicos;
+
+    @ElementCollection
+    @CollectionTable(
+        name = "evento_instrumento",
+        joinColumns = @JoinColumn(name = "evento_id")
+    )
+    private List<InstrumentoNecessario> instrumentos;
+
+    @ManyToMany
+    @JoinTable(
+        name = "evento_partitura",
+        joinColumns = @JoinColumn(name = "evento_id"),
+        inverseJoinColumns = @JoinColumn(name = "partitura_id")
+    )
+    private List<Partitura> partituras;
 }

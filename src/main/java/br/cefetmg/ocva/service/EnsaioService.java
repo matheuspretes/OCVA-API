@@ -11,20 +11,25 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.cefetmg.ocva.model.Ensaio;
 import br.cefetmg.ocva.model.Musico;
+import br.cefetmg.ocva.model.Partitura;
 import br.cefetmg.ocva.dto.EnsaioRequestDTO;
 import br.cefetmg.ocva.dto.EnsaioResponseDTO;
 import br.cefetmg.ocva.repository.EnsaioRepository;
 import br.cefetmg.ocva.repository.MusicoRepository;
+import br.cefetmg.ocva.repository.PartituraRepository;
 
 @Service
 public class EnsaioService {
 
     private final EnsaioRepository ensaioRepository;
     private final MusicoRepository musicoRepository;
+    private final PartituraRepository partituraRepository;
 
-    public EnsaioService(EnsaioRepository ensaioRepository, MusicoRepository musicoRepository) {
+    public EnsaioService(EnsaioRepository ensaioRepository, MusicoRepository musicoRepository,
+            PartituraRepository partituraRepository) {
         this.ensaioRepository = ensaioRepository;
         this.musicoRepository = musicoRepository;
+        this.partituraRepository = partituraRepository;
     }
 
     @Transactional(readOnly = true)
@@ -39,10 +44,14 @@ public class EnsaioService {
 
     @Transactional
     public EnsaioResponseDTO inserir(EnsaioRequestDTO dto) {
+        validarData(dto.getData(), null);
+
         Ensaio ensaio = converter(dto);
         ensaio.setId(null);
         ensaio.setMusicos(resolverMusicos(dto.getMusicoIds()));
         ensaio.setCriador(dto.getCriadorId() == null ? null : buscarMusico(dto.getCriadorId()));
+        ensaio.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
+        ensaio.setPartituras(resolverPartituras(dto.getPartituraIds()));
         return new EnsaioResponseDTO(ensaioRepository.save(ensaio));
     }
 
@@ -54,11 +63,19 @@ public class EnsaioService {
         Ensaio ensaio = ensaioRepository.findById(dto.getId()).orElseThrow(() ->
                 new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "Ensaio com id: " + dto.getId() + " não encontrado"));
+
+        // Só valida a data se ela foi alterada, assim ensaios antigos ainda podem ser editados
+        if (!ensaio.getData().equals(dto.getData())) {
+            validarData(dto.getData(), ensaio.getId());
+        }
+
         ensaio.setData(dto.getData());
         ensaio.setDescricao(dto.getDescricao());
         ensaio.setTitulo(dto.getTitulo());
         ensaio.setMusicos(resolverMusicos(dto.getMusicoIds()));
         ensaio.setCriador(dto.getCriadorId() == null ? null : buscarMusico(dto.getCriadorId()));
+        ensaio.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
+        ensaio.setPartituras(resolverPartituras(dto.getPartituraIds()));
         if (!ensaioRepository.existsById(ensaio.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
                     "Ensaio com id: " + ensaio.getId() + " não encontrado");
@@ -115,6 +132,9 @@ public class EnsaioService {
         if (ensaio.getFaltas() != null) {
             ensaio.getFaltas().clear();
         }
+        if (ensaio.getPartituras() != null) {
+            ensaio.getPartituras().clear();
+        }
         ensaioRepository.delete(ensaio);
         return new EnsaioResponseDTO(ensaio);
     }
@@ -144,6 +164,30 @@ public class EnsaioService {
                     return buscarMusico(id);
                 })
                 .collect(Collectors.toCollection(ArrayList::new));
+    }
+
+    private void validarData(String data, Long ensaioId) {
+        AgendaValidador.validarData(data);
+
+        // No cadastro o ensaio ainda não tem id, então usamos 0 (nenhum ensaio tem esse id)
+        Long idIgnorado = ensaioId == null ? 0L : ensaioId;
+        if (ensaioRepository.existsByDataStartingWithAndIdNot(AgendaValidador.pegarDia(data), idIgnorado)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe um ensaio cadastrado neste dia.");
+        }
+    }
+
+    private List<Partitura> resolverPartituras(List<Long> ids) {
+        List<Partitura> partituras = new ArrayList<>();
+        if (ids == null) {
+            return partituras;
+        }
+        for (Long id : ids) {
+            Partitura partitura = partituraRepository.findById(id)
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND, "Partitura com id: " + id + " não encontrada"));
+            partituras.add(partitura);
+        }
+        return partituras;
     }
 
     private Ensaio converter(EnsaioRequestDTO dto) {

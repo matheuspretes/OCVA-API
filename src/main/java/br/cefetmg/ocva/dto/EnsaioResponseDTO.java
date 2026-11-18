@@ -1,8 +1,12 @@
 package br.cefetmg.ocva.dto;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import br.cefetmg.ocva.model.Ensaio;
+import br.cefetmg.ocva.model.InstrumentoNecessario;
+import br.cefetmg.ocva.model.Musico;
+import br.cefetmg.ocva.model.Partitura;
 import lombok.Getter;
 
 @Getter
@@ -16,6 +20,8 @@ public class EnsaioResponseDTO {
     private final List<MusicoResumoDTO> presencas;
     private final List<MusicoResumoDTO> faltas;
     private final MusicoResumoDTO criador;
+    private final List<InstrumentoNecessarioResponseDTO> instrumentos;
+    private final List<Partitura> partituras;
 
     public EnsaioResponseDTO(Ensaio ensaio) {
         this.id = ensaio.getId();
@@ -27,9 +33,18 @@ public class EnsaioResponseDTO {
         this.faltas = converter(ensaio.getFaltas());
         this.criador = ensaio.getCriador() == null
                 ? null : new MusicoResumoDTO(ensaio.getCriador());
+
+        this.instrumentos = new ArrayList<>();
+        if (ensaio.getInstrumentos() != null) {
+            for (InstrumentoNecessario item : ensaio.getInstrumentos()) {
+                this.instrumentos.add(new InstrumentoNecessarioResponseDTO(item, ensaio.getMusicos()));
+            }
+        }
+
+        this.partituras = ensaio.getPartituras() == null ? List.of() : ensaio.getPartituras();
     }
 
-    private static List<MusicoResumoDTO> converter(List<br.cefetmg.ocva.model.Musico> musicos) {
+    private static List<MusicoResumoDTO> converter(List<Musico> musicos) {
         return musicos == null ? List.of() : musicos.stream().map(MusicoResumoDTO::new).toList();
     }
 }

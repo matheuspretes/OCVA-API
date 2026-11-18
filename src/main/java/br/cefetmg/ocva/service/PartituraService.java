@@ -14,7 +14,11 @@ import org.springframework.web.server.ResponseStatusException;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;
 
+import br.cefetmg.ocva.model.Ensaio;
+import br.cefetmg.ocva.model.Evento;
 import br.cefetmg.ocva.model.Partitura;
+import br.cefetmg.ocva.repository.EnsaioRepository;
+import br.cefetmg.ocva.repository.EventoRepository;
 import br.cefetmg.ocva.repository.PartituraRepository;
 
 @Service
@@ -22,10 +26,15 @@ public class PartituraService {
 
     private final Cloudinary cloudinary;
     private final PartituraRepository repository;
+    private final EnsaioRepository ensaioRepository;
+    private final EventoRepository eventoRepository;
 
-    public PartituraService(Cloudinary cloudinary, PartituraRepository repository) {
+    public PartituraService(Cloudinary cloudinary, PartituraRepository repository,
+            EnsaioRepository ensaioRepository, EventoRepository eventoRepository) {
         this.cloudinary = cloudinary;
         this.repository = repository;
+        this.ensaioRepository = ensaioRepository;
+        this.eventoRepository = eventoRepository;
     }
 
     @Transactional(readOnly = true)
@@ -74,6 +83,15 @@ public class PartituraService {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Erro ao remover a partitura do Cloudinary.", exception);
         }
+
+        // Tira a partitura dos ensaios e eventos antes de apagar
+        for (Ensaio ensaio : ensaioRepository.findByPartiturasId(id)) {
+            ensaio.getPartituras().remove(partitura);
+        }
+        for (Evento evento : eventoRepository.findByPartiturasId(id)) {
+            evento.getPartituras().remove(partitura);
+        }
+
         repository.delete(partitura);
     }
 }
