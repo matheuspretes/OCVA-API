@@ -16,6 +16,7 @@ public class EnsaioResponseDTO {
     private final String data;
     private final String descricao;
     private final String titulo;
+    private final String tipo;
     private final List<MusicoResumoDTO> musicos;
     private final List<MusicoResumoDTO> presencas;
     private final List<MusicoResumoDTO> faltas;
@@ -28,6 +29,7 @@ public class EnsaioResponseDTO {
         this.data = ensaio.getData();
         this.descricao = ensaio.getDescricao();
         this.titulo = ensaio.getTitulo();
+        this.tipo = ensaio.getTipo();
         this.musicos = converter(ensaio.getMusicos());
         this.presencas = converter(ensaio.getPresencas());
         this.faltas = converter(ensaio.getFaltas());

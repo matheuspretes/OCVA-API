@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.cefetmg.ocva.model.Evento;
@@ -51,5 +52,16 @@ public class EventoController {
     @DeleteMapping("/{id}")
     public EventoResponseDTO excluir(@PathVariable long id) {
         return service.excluir(id);
+    }
+
+    @PutMapping("/{eventoId}/presenca/{musicoId}")
+    public EventoResponseDTO marcarPresenca(@PathVariable Long eventoId, @PathVariable Long musicoId,
+            @RequestParam boolean presente) {
+        return service.marcarPresenca(eventoId, musicoId, presente);
+    }
+
+    @DeleteMapping("/{eventoId}/presenca/{musicoId}")
+    public EventoResponseDTO removerPresenca(@PathVariable Long eventoId, @PathVariable Long musicoId) {
+        return service.removerPresenca(eventoId, musicoId);
     }
 }

@@ -50,6 +50,23 @@ public class Evento {
     )
     private List<Musico> musicos;
 
+    // Presença registrada depois do evento (como nos ensaios)
+    @ManyToMany
+    @JoinTable(
+        name = "evento_presenca",
+        joinColumns = @JoinColumn(name = "evento_id"),
+        inverseJoinColumns = @JoinColumn(name = "musico_id")
+    )
+    private List<Musico> presencas;
+
+    @ManyToMany
+    @JoinTable(
+        name = "evento_falta",
+        joinColumns = @JoinColumn(name = "evento_id"),
+        inverseJoinColumns = @JoinColumn(name = "musico_id")
+    )
+    private List<Musico> faltas;
+
     @ElementCollection
     @CollectionTable(
         name = "evento_instrumento",

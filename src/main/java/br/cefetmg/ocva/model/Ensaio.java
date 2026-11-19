@@ -37,6 +37,10 @@ public class Ensaio {
     @Column(length = 120)
     private String titulo;
 
+    // Tipo do encontro que originou o ensaio (ex.: "Reunião"); vazio = ensaio comum
+    @Column(length = 40)
+    private String tipo;
+
     @ManyToMany
     @JoinTable(
         name = "ensaio_musico",

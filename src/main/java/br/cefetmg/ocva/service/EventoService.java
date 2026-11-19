@@ -86,10 +86,54 @@ public class EventoService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Evento com id: " + id + " não encontrado"));
         evento.setMusicos(new ArrayList<>());
+        evento.setPresencas(new ArrayList<>());
+        evento.setFaltas(new ArrayList<>());
         evento.setPartituras(new ArrayList<>());
         eventoRepository.saveAndFlush(evento);
         eventoRepository.delete(evento);
         return new EventoResponseDTO(evento);
+    }
+
+    /**
+     * Marca presença (presente = true) ou falta. Se o músico já tinha outra
+     * marcação, ela é trocada.
+     */
+    @Transactional
+    public EventoResponseDTO marcarPresenca(Long eventoId, Long musicoId, boolean presente) {
+        Evento evento = buscarEvento(eventoId);
+        Musico musico = buscarMusico(musicoId);
+        limparPresenca(evento, musicoId);
+        (presente ? evento.getPresencas() : evento.getFaltas()).add(musico);
+        return new EventoResponseDTO(eventoRepository.save(evento));
+    }
+
+    @Transactional
+    public EventoResponseDTO removerPresenca(Long eventoId, Long musicoId) {
+        Evento evento = buscarEvento(eventoId);
+        buscarMusico(musicoId);
+        limparPresenca(evento, musicoId);
+        return new EventoResponseDTO(eventoRepository.save(evento));
+    }
+
+    private void limparPresenca(Evento evento, Long musicoId) {
+        if (evento.getPresencas() == null) {
+            evento.setPresencas(new ArrayList<>());
+        }
+        if (evento.getFaltas() == null) {
+            evento.setFaltas(new ArrayList<>());
+        }
+        evento.getPresencas().removeIf(m -> musicoId.equals(m.getId()));
+        evento.getFaltas().removeIf(m -> musicoId.equals(m.getId()));
+    }
+
+    private Evento buscarEvento(Long id) {
+        return eventoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado"));
+    }
+
+    private Musico buscarMusico(Long id) {
+        return musicoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Músico não encontrado"));
     }
 
     private List<Musico> resolverMusicos(List<Long> ids) {
