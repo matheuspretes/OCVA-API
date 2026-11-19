@@ -77,6 +77,7 @@ public class EncontroConversor {
         Ensaio ensaio = new Ensaio();
         ensaio.setData(LocalDateTime.of(encontro.getData(), encontro.getHora()).format(FORMATO_ENSAIO));
         ensaio.setTitulo(encontro.getTitulo());
+        ensaio.setTipo(encontro.getTipo() == null ? null : encontro.getTipo().getNome());
         ensaio.setDescricao(encontro.getDescricao());
         ensaio.setCriador(encontro.getCriador());
 

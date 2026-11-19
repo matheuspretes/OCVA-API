@@ -5,6 +5,7 @@ import java.util.List;
 
 import br.cefetmg.ocva.model.Evento;
 import br.cefetmg.ocva.model.InstrumentoNecessario;
+import br.cefetmg.ocva.model.Musico;
 import br.cefetmg.ocva.model.Partitura;
 import lombok.Getter;
 
@@ -18,6 +19,8 @@ public class EventoResponseDTO {
     private final String local;
     private final String banner;
     private final List<MusicoResumoDTO> musicos;
+    private final List<MusicoResumoDTO> presencas;
+    private final List<MusicoResumoDTO> faltas;
     private final List<InstrumentoNecessarioResponseDTO> instrumentos;
     private final List<Partitura> partituras;
 
@@ -28,9 +31,9 @@ public class EventoResponseDTO {
         this.titulo = evento.getTitulo();
         this.local = evento.getLocal();
         this.banner = evento.getBanner();
-        this.musicos = evento.getMusicos() == null
-                ? List.of()
-                : evento.getMusicos().stream().map(MusicoResumoDTO::new).toList();
+        this.musicos = converter(evento.getMusicos());
+        this.presencas = converter(evento.getPresencas());
+        this.faltas = converter(evento.getFaltas());
 
         this.instrumentos = new ArrayList<>();
         if (evento.getInstrumentos() != null) {
@@ -40,5 +43,9 @@ public class EventoResponseDTO {
         }
 
         this.partituras = evento.getPartituras() == null ? List.of() : evento.getPartituras();
+    }
+
+    private static List<MusicoResumoDTO> converter(List<Musico> musicos) {
+        return musicos == null ? List.of() : musicos.stream().map(MusicoResumoDTO::new).toList();
     }
 }
