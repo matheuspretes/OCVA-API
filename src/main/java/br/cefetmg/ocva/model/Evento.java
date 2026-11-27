@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -41,6 +42,11 @@ public class Evento {
 
     @Column(columnDefinition = "TEXT")
     private String banner;
+
+    // Maestro responsável
+    @ManyToOne
+    @JoinColumn(name = "maestro_id")
+    private Musico maestro;
 
     @ManyToMany
     @JoinTable(

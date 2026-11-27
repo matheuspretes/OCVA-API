@@ -14,8 +14,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.cefetmg.ocva.dto.EventoMarcadoRequestDTO;
 import br.cefetmg.ocva.dto.EventoMarcadoResponseDTO;
+import br.cefetmg.ocva.model.Encontro;
+import br.cefetmg.ocva.model.Ensaio;
 import br.cefetmg.ocva.model.EventoMarcado;
 import br.cefetmg.ocva.model.Musico;
+import br.cefetmg.ocva.repository.EncontroRepository;
+import br.cefetmg.ocva.repository.EnsaioRepository;
 import br.cefetmg.ocva.repository.EventoMarcadoRepository;
 import br.cefetmg.ocva.repository.MusicoRepository;
 
@@ -24,27 +28,39 @@ public class EventoMarcadoService {
 
     private final EventoMarcadoRepository repository;
     private final MusicoRepository musicoRepository;
-    private final EventoMarcadoConversor conversor;
+    private final EnsaioRepository ensaioRepository;
+    private final EncontroRepository encontroRepository;
+    private final AtualizadorAgenda atualizador;
+    private final AgendaReferencias referencias;
 
     public EventoMarcadoService(EventoMarcadoRepository repository, MusicoRepository musicoRepository,
-            EventoMarcadoConversor conversor) {
+            EnsaioRepository ensaioRepository, EncontroRepository encontroRepository,
+            AtualizadorAgenda atualizador, AgendaReferencias referencias) {
         this.repository = repository;
         this.musicoRepository = musicoRepository;
-        this.conversor = conversor;
+        this.ensaioRepository = ensaioRepository;
+        this.encontroRepository = encontroRepository;
+        this.atualizador = atualizador;
+        this.referencias = referencias;
     }
 
+    /** Eventos que ainda não aconteceram, do mais próximo para o mais distante. */
     @Transactional
     public List<EventoMarcadoResponseDTO> listar() {
-        conversor.converterEventosPassados();
-        return repository.findByDataGreaterThanEqualOrderByDataAscHoraAsc(EncontroConversor.hoje())
-                .stream().map(EventoMarcadoResponseDTO::new).toList();
+        atualizador.atualizar();
+        List<EventoMarcadoResponseDTO> futuros = new ArrayList<>();
+        for (EventoMarcado evento : repository.findAllByOrderByDataAscHoraAsc()) {
+            if (!EncontroConversor.jaPassou(evento.getData(), evento.getHora())) {
+                futuros.add(new EventoMarcadoResponseDTO(evento));
+            }
+        }
+        return futuros;
     }
 
     @Transactional
     public EventoMarcadoResponseDTO proximo() {
-        conversor.converterEventosPassados();
-        return repository.findByDataGreaterThanEqualOrderByDataAscHoraAsc(EncontroConversor.hoje())
-                .stream().findFirst().map(EventoMarcadoResponseDTO::new).orElse(null);
+        List<EventoMarcadoResponseDTO> futuros = listar();
+        return futuros.isEmpty() ? null : futuros.get(0);
     }
 
     @Transactional(readOnly = true)
@@ -77,6 +93,14 @@ public class EventoMarcadoService {
         EventoMarcadoResponseDTO resposta = new EventoMarcadoResponseDTO(evento);
         evento.getInteressados().clear();
         evento.getRecusados().clear();
+
+        // Os ensaios do evento ficam sem evento
+        for (Ensaio ensaio : ensaioRepository.findByEventoMarcadoId(id)) {
+            ensaio.setEventoMarcado(null);
+        }
+        for (Encontro encontro : encontroRepository.findByEventoMarcadoId(id)) {
+            encontro.setEventoMarcado(null);
+        }
         repository.delete(evento);
         return resposta;
     }
@@ -122,6 +146,7 @@ public class EventoMarcadoService {
         evento.setLocal(texto(dto.getLocal(), "o local", 160));
         evento.setDescricao(texto(dto.getDescricao(), "a descrição", 5000));
         evento.setBanner(dto.getBanner() == null || dto.getBanner().isBlank() ? null : dto.getBanner());
+        evento.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), evento.getMaestro()));
         if (novo || dto.getCriadorId() != null) {
             evento.setCriador(dto.getCriadorId() == null ? null : buscarMusico(dto.getCriadorId()));
         }

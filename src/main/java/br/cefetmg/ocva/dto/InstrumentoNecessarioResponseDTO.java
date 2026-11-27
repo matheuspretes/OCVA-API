@@ -25,7 +25,7 @@ public class InstrumentoNecessarioResponseDTO {
             return total;
         }
         for (Musico musico : musicos) {
-            if (instrumento.equalsIgnoreCase(musico.getInstrumento())) {
+            if (musico.tocaInstrumento(instrumento)) {
                 total++;
             }
         }

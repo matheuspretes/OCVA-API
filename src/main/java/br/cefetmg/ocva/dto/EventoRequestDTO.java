@@ -11,6 +11,7 @@ import lombok.Setter;
 public class EventoRequestDTO {
 
     private Long id;
+    private Long maestroId;
     private String data;
     private String descricao;
     private String titulo;

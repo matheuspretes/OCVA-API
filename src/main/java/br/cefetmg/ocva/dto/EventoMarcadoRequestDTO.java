@@ -8,6 +8,7 @@ import lombok.Setter;
 public class EventoMarcadoRequestDTO {
 
     private Long id;
+    private Long maestroId;
     // aaaa-mm-dd
     private String data;
     // hh:mm

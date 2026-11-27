@@ -8,11 +8,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import br.cefetmg.ocva.model.Encontro;
 
 public interface EncontroRepository extends JpaRepository<Encontro, Long> {
-    // Encontros de hoje em diante, do mais próximo para o mais distante
-    List<Encontro> findByDataGreaterThanEqualOrderByDataAscHoraAsc(LocalDate data);
+    // Todos os encontros, do mais antigo para o mais novo
+    List<Encontro> findAllByOrderByDataAscHoraAsc();
 
-    // Encontros cujo dia já passou (serão convertidos em ensaios)
-    List<Encontro> findByDataBefore(LocalDate data);
+    // Encontros cujo dia é até a data informada (usado para achar os que já passaram)
+    List<Encontro> findByDataLessThanEqual(LocalDate data);
+
+    // Encontros ligados a um evento
+    List<Encontro> findByEventoMarcadoId(Long eventoMarcadoId);
+
+    List<Encontro> findByEventoId(Long eventoId);
 
     boolean existsByTipoId(Long tipoId);
 }

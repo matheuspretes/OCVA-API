@@ -37,6 +37,12 @@ public class EncontroController {
         return service.listar();
     }
 
+    // Encontros que já aconteceram e não viraram ensaio (ex.: reuniões)
+    @GetMapping("/passados")
+    public List<EncontroResponseDTO> listarPassados() {
+        return service.listarPassados();
+    }
+
     // O encontro mais próximo (204 se não houver nenhum)
     @GetMapping("/proximo")
     public ResponseEntity<EncontroResponseDTO> proximo() {

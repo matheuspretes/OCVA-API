@@ -2,7 +2,6 @@ package br.cefetmg.ocva.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -24,21 +23,27 @@ public class EnsaioService {
     private final EnsaioRepository ensaioRepository;
     private final MusicoRepository musicoRepository;
     private final PartituraRepository partituraRepository;
+    private final AtualizadorAgenda atualizador;
+    private final AgendaReferencias referencias;
 
     public EnsaioService(EnsaioRepository ensaioRepository, MusicoRepository musicoRepository,
-            PartituraRepository partituraRepository) {
+            PartituraRepository partituraRepository, AtualizadorAgenda atualizador, AgendaReferencias referencias) {
         this.ensaioRepository = ensaioRepository;
         this.musicoRepository = musicoRepository;
         this.partituraRepository = partituraRepository;
+        this.atualizador = atualizador;
+        this.referencias = referencias;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<EnsaioResponseDTO> listar() {
+        atualizador.atualizar();
         return ensaioRepository.findAll().stream().map(EnsaioResponseDTO::new).toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public EnsaioResponseDTO buscarPorId(Long id) {
+        atualizador.atualizar();
         return ensaioRepository.findById(id).map(EnsaioResponseDTO::new).orElse(null);
     }
 
@@ -48,7 +53,9 @@ public class EnsaioService {
 
         Ensaio ensaio = converter(dto);
         ensaio.setId(null);
-        ensaio.setMusicos(resolverMusicos(dto.getMusicoIds()));
+        ensaio.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), null));
+        definirEvento(ensaio, dto);
+        ensaio.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), null));
         ensaio.setCriador(dto.getCriadorId() == null ? null : buscarMusico(dto.getCriadorId()));
         ensaio.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
         ensaio.setPartituras(resolverPartituras(dto.getPartituraIds()));
@@ -72,8 +79,12 @@ public class EnsaioService {
         ensaio.setData(dto.getData());
         ensaio.setDescricao(dto.getDescricao());
         ensaio.setTitulo(dto.getTitulo());
-        ensaio.setMusicos(resolverMusicos(dto.getMusicoIds()));
-        ensaio.setCriador(dto.getCriadorId() == null ? null : buscarMusico(dto.getCriadorId()));
+        ensaio.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), ensaio.getMaestro()));
+        definirEvento(ensaio, dto);
+        ensaio.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), ensaio.getMusicos()));
+        if (dto.getCriadorId() != null) {
+            ensaio.setCriador(buscarMusico(dto.getCriadorId()));
+        }
         ensaio.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
         ensaio.setPartituras(resolverPartituras(dto.getPartituraIds()));
         if (!ensaioRepository.existsById(ensaio.getId())) {
@@ -151,19 +162,17 @@ public class EnsaioService {
                         HttpStatus.NOT_FOUND, "Músico não encontrado"));
     }
 
-    private List<Musico> resolverMusicos(List<Long> ids) {
-        if (ids == null) {
-            return new ArrayList<>();
+    /**
+     * Ensaios precisam estar ligados a um evento.
+     * Registros antigos de outros tipos (ex.: Reunião) não precisam.
+     */
+    private void definirEvento(Ensaio ensaio, EnsaioRequestDTO dto) {
+        boolean ehEnsaio = ensaio.getTipo() == null || ensaio.getTipo().equalsIgnoreCase("ensaio");
+        if (ehEnsaio) {
+            referencias.validarEventoDoEnsaio(dto.getEventoMarcadoId(), dto.getEventoId());
         }
-        return ids.stream()
-                .map(id -> {
-                    if (id == null) {
-                        throw new ResponseStatusException(
-                                HttpStatus.BAD_REQUEST, "Todo músico deve possuir id");
-                    }
-                    return buscarMusico(id);
-                })
-                .collect(Collectors.toCollection(ArrayList::new));
+        ensaio.setEventoMarcado(referencias.buscarEventoMarcado(dto.getEventoMarcadoId()));
+        ensaio.setEvento(referencias.buscarEvento(dto.getEventoId()));
     }
 
     private void validarData(String data, Long ensaioId) {

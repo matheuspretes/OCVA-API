@@ -7,25 +7,27 @@ import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
+import br.cefetmg.ocva.model.Encontro;
+import br.cefetmg.ocva.model.Ensaio;
 import br.cefetmg.ocva.model.Evento;
 import br.cefetmg.ocva.model.EventoMarcado;
 import br.cefetmg.ocva.model.Musico;
+import br.cefetmg.ocva.repository.EncontroRepository;
+import br.cefetmg.ocva.repository.EnsaioRepository;
 import br.cefetmg.ocva.repository.EventoMarcadoRepository;
 import br.cefetmg.ocva.repository.EventoRepository;
 
 /**
- * Transforma em {@link Evento} todo evento marcado cuja data já passou.
+ * Transforma em {@link Evento} todo evento marcado cujo horário já passou.
  * Quem respondeu "Vou" vira participante do evento e fica com presença,
  * que pode ser trocada por falta depois.
+ * Os ensaios e encontros ligados ao evento marcado passam a apontar para o evento novo.
  *
- * Roda na virada do dia, na inicialização da API e antes das consultas.
+ * Quem chama este conversor é o {@link AtualizadorAgenda}.
  */
 @Component
 public class EventoMarcadoConversor {
@@ -35,33 +37,44 @@ public class EventoMarcadoConversor {
 
     private final EventoMarcadoRepository eventoMarcadoRepository;
     private final EventoRepository eventoRepository;
+    private final EnsaioRepository ensaioRepository;
+    private final EncontroRepository encontroRepository;
 
-    public EventoMarcadoConversor(EventoMarcadoRepository eventoMarcadoRepository, EventoRepository eventoRepository) {
+    public EventoMarcadoConversor(EventoMarcadoRepository eventoMarcadoRepository, EventoRepository eventoRepository,
+            EnsaioRepository ensaioRepository, EncontroRepository encontroRepository) {
         this.eventoMarcadoRepository = eventoMarcadoRepository;
         this.eventoRepository = eventoRepository;
-    }
-
-    @EventListener(ApplicationReadyEvent.class)
-    public void aoIniciar() {
-        converterEventosPassados();
-    }
-
-    @Scheduled(cron = "0 5 0 * * *", zone = "America/Sao_Paulo")
-    public void diariamente() {
-        converterEventosPassados();
+        this.ensaioRepository = ensaioRepository;
+        this.encontroRepository = encontroRepository;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public synchronized int converterEventosPassados() {
-        List<EventoMarcado> passados = eventoMarcadoRepository.findByDataBefore(EncontroConversor.hoje());
-        for (EventoMarcado marcado : passados) {
-            eventoRepository.save(paraEvento(marcado));
-            eventoMarcadoRepository.delete(marcado);
+        int convertidos = 0;
+        for (EventoMarcado marcado : eventoMarcadoRepository.findByDataLessThanEqual(EncontroConversor.hoje())) {
+            if (EncontroConversor.jaPassou(marcado.getData(), marcado.getHora())) {
+                Evento evento = eventoRepository.save(paraEvento(marcado));
+                moverEnsaios(marcado, evento);
+                eventoMarcadoRepository.delete(marcado);
+                convertidos++;
+            }
         }
-        if (!passados.isEmpty()) {
-            log.info("{} evento(s) marcado(s) convertido(s) em evento.", passados.size());
+        if (convertidos > 0) {
+            log.info("{} evento(s) marcado(s) convertido(s) em evento.", convertidos);
         }
-        return passados.size();
+        return convertidos;
+    }
+
+    // Ensaios e encontros do evento marcado passam a apontar para o evento realizado
+    private void moverEnsaios(EventoMarcado marcado, Evento evento) {
+        for (Ensaio ensaio : ensaioRepository.findByEventoMarcadoId(marcado.getId())) {
+            ensaio.setEventoMarcado(null);
+            ensaio.setEvento(evento);
+        }
+        for (Encontro encontro : encontroRepository.findByEventoMarcadoId(marcado.getId())) {
+            encontro.setEventoMarcado(null);
+            encontro.setEvento(evento);
+        }
     }
 
     private Evento paraEvento(EventoMarcado marcado) {
@@ -71,6 +84,7 @@ public class EventoMarcadoConversor {
         evento.setLocal(marcado.getLocal());
         evento.setDescricao(marcado.getDescricao());
         evento.setBanner(marcado.getBanner());
+        evento.setMaestro(marcado.getMaestro());
 
         List<Musico> participantes = marcado.getInteressados() == null
                 ? new ArrayList<>() : new ArrayList<>(marcado.getInteressados());

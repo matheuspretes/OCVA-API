@@ -55,6 +55,11 @@ public class EventoMarcado {
     @JoinColumn(name = "criador_id")
     private Musico criador;
 
+    // Maestro responsável
+    @ManyToOne
+    @JoinColumn(name = "maestro_id")
+    private Musico maestro;
+
     // Músicos que responderam "Vou"
     @ManyToMany
     @JoinTable(

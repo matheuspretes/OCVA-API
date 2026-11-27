@@ -2,6 +2,7 @@ package br.cefetmg.ocva.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -11,9 +12,6 @@ import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.event.EventListener;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,11 +23,10 @@ import br.cefetmg.ocva.repository.EncontroRepository;
 import br.cefetmg.ocva.repository.EnsaioRepository;
 
 /**
- * Transforma em ensaio todo encontro cuja data já passou.
+ * Transforma em ensaio todo encontro do tipo "Ensaio" cujo horário já passou.
+ * Encontros de outros tipos (ex.: Reunião) continuam salvos como encontro.
  *
- * Roda todo dia logo após a meia-noite, na inicialização da API e antes das
- * consultas de encontros. Assim a conversão acontece mesmo que o servidor
- * estivesse desligado na virada do dia.
+ * Quem chama este conversor é o {@link AtualizadorAgenda}.
  */
 @Component
 public class EncontroConversor {
@@ -50,36 +47,42 @@ public class EncontroConversor {
         return LocalDate.now(FUSO);
     }
 
-    @EventListener(ApplicationReadyEvent.class)
-    public void aoIniciar() {
-        converterEncontrosPassados();
+    public static LocalDateTime agora() {
+        return LocalDateTime.now(FUSO);
     }
 
-    @Scheduled(cron = "0 5 0 * * *", zone = "America/Sao_Paulo")
-    public void diariamente() {
-        converterEncontrosPassados();
+    // true quando a data e a hora informadas já passaram
+    public static boolean jaPassou(LocalDate data, LocalTime hora) {
+        return LocalDateTime.of(data, hora).isBefore(agora());
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public synchronized int converterEncontrosPassados() {
-        List<Encontro> passados = encontroRepository.findByDataBefore(hoje());
-        for (Encontro encontro : passados) {
-            ensaioRepository.save(paraEnsaio(encontro));
-            encontroRepository.delete(encontro);
+        int convertidos = 0;
+        for (Encontro encontro : encontroRepository.findByDataLessThanEqual(hoje())) {
+            boolean ehEnsaio = encontro.getTipo() != null && encontro.getTipo().ehEnsaio();
+            if (ehEnsaio && jaPassou(encontro.getData(), encontro.getHora())) {
+                ensaioRepository.save(paraEnsaio(encontro));
+                encontroRepository.delete(encontro);
+                convertidos++;
+            }
         }
-        if (!passados.isEmpty()) {
-            log.info("{} encontro(s) convertido(s) em ensaio.", passados.size());
+        if (convertidos > 0) {
+            log.info("{} encontro(s) convertido(s) em ensaio.", convertidos);
         }
-        return passados.size();
+        return convertidos;
     }
 
     private Ensaio paraEnsaio(Encontro encontro) {
         Ensaio ensaio = new Ensaio();
         ensaio.setData(LocalDateTime.of(encontro.getData(), encontro.getHora()).format(FORMATO_ENSAIO));
         ensaio.setTitulo(encontro.getTitulo());
-        ensaio.setTipo(encontro.getTipo() == null ? null : encontro.getTipo().getNome());
+        ensaio.setTipo(encontro.getTipo().getNome());
         ensaio.setDescricao(encontro.getDescricao());
         ensaio.setCriador(encontro.getCriador());
+        ensaio.setMaestro(encontro.getMaestro());
+        ensaio.setEventoMarcado(encontro.getEventoMarcado());
+        ensaio.setEvento(encontro.getEvento());
 
         List<Musico> interessados = copiar(encontro.getInteressados());
         List<Musico> recusados = copiar(encontro.getRecusados());
