@@ -6,21 +6,20 @@ import java.util.List;
 import br.cefetmg.ocva.model.Musico;
 
 /**
- * Presença padrão de ensaios e eventos: todo músico escalado começa com presença.
- * Quem respondeu "Não vou" começa com falta. A presença pode ser trocada depois
- * na página de detalhe.
+ * Presença padrão de ensaios e eventos.
+ * - Ao registrar um encontro/evento que passou: só quem respondeu à enquete entra;
+ *   "Vou" começa com presença e "Não vou" com falta. Quem não respondeu não entra.
+ * - Ao cadastrar ou editar direto: todo músico escalado começa com presença.
+ * A marcação pode ser trocada depois na página de detalhe.
  */
 public class PresencaPadrao {
 
     private PresencaPadrao() {
     }
 
-    /**
-     * Escala todos os músicos ativos e quem respondeu à enquete (mesmo que tenha sido desativado depois).
-     */
-    public static List<Musico> escalados(List<Musico> ativos, List<Musico> vao, List<Musico> naoVao) {
+    /** Escala quem respondeu à enquete ("Vou" e "Não vou"). */
+    public static List<Musico> escalados(List<Musico> vao, List<Musico> naoVao) {
         List<Musico> lista = new ArrayList<>();
-        adicionarTodos(lista, ativos);
         adicionarTodos(lista, vao);
         adicionarTodos(lista, naoVao);
         return lista;

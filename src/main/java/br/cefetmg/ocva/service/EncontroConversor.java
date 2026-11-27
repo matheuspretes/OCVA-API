@@ -19,12 +19,11 @@ import br.cefetmg.ocva.model.Ensaio;
 import br.cefetmg.ocva.model.Musico;
 import br.cefetmg.ocva.repository.EncontroRepository;
 import br.cefetmg.ocva.repository.EnsaioRepository;
-import br.cefetmg.ocva.repository.MusicoRepository;
 
 /**
  * Transforma em ensaio todo encontro do tipo "Ensaio" cujo horário já passou.
  * Encontros de outros tipos (ex.: Reunião) continuam salvos como encontro.
- * Todos os músicos ativos começam com presença; quem respondeu "Não vou" começa com falta.
+ * Só quem respondeu à enquete entra no ensaio: "Vou" com presença e "Não vou" com falta.
  *
  * Quem chama este conversor é o {@link AtualizadorAgenda}.
  */
@@ -37,13 +36,10 @@ public class EncontroConversor {
 
     private final EncontroRepository encontroRepository;
     private final EnsaioRepository ensaioRepository;
-    private final MusicoRepository musicoRepository;
 
-    public EncontroConversor(EncontroRepository encontroRepository, EnsaioRepository ensaioRepository,
-            MusicoRepository musicoRepository) {
+    public EncontroConversor(EncontroRepository encontroRepository, EnsaioRepository ensaioRepository) {
         this.encontroRepository = encontroRepository;
         this.ensaioRepository = ensaioRepository;
-        this.musicoRepository = musicoRepository;
     }
 
     public static LocalDate hoje() {
@@ -87,10 +83,9 @@ public class EncontroConversor {
         ensaio.setEventoMarcado(encontro.getEventoMarcado());
         ensaio.setEvento(encontro.getEvento());
 
-        // Todos os músicos ativos ficam escalados e começam com presença;
-        // quem respondeu "Não vou" começa com falta
+        // Só quem respondeu à enquete entra: "Vou" com presença e "Não vou" com falta
         List<Musico> recusados = copiar(encontro.getRecusados());
-        List<Musico> escalados = PresencaPadrao.escalados(musicosAtivos(), encontro.getInteressados(), recusados);
+        List<Musico> escalados = PresencaPadrao.escalados(encontro.getInteressados(), recusados);
 
         ensaio.setMusicos(escalados);
         ensaio.setPresencas(PresencaPadrao.presentes(escalados, recusados));
@@ -98,17 +93,6 @@ public class EncontroConversor {
         ensaio.setInstrumentos(new ArrayList<>());
         ensaio.setPartituras(new ArrayList<>());
         return ensaio;
-    }
-
-    // Músicos ativos: todos começam com presença nos ensaios e eventos registrados
-    private List<Musico> musicosAtivos() {
-        List<Musico> ativos = new ArrayList<>();
-        for (Musico musico : musicoRepository.findByTipoIgnoreCase("musico")) {
-            if (musico.estaAtivo()) {
-                ativos.add(musico);
-            }
-        }
-        return ativos;
     }
 
     private static List<Musico> copiar(List<Musico> lista) {

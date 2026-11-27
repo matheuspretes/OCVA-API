@@ -20,12 +20,11 @@ import br.cefetmg.ocva.repository.EncontroRepository;
 import br.cefetmg.ocva.repository.EnsaioRepository;
 import br.cefetmg.ocva.repository.EventoMarcadoRepository;
 import br.cefetmg.ocva.repository.EventoRepository;
-import br.cefetmg.ocva.repository.MusicoRepository;
 
 /**
  * Transforma em {@link Evento} todo evento marcado cujo horário já passou.
- * Todos os músicos ativos ficam escalados com presença; quem respondeu "Não vou"
- * começa com falta. A marcação pode ser trocada depois.
+ * Só quem respondeu à enquete entra no evento: "Vou" com presença e "Não vou"
+ * com falta. A marcação pode ser trocada depois.
  * Os ensaios e encontros ligados ao evento marcado passam a apontar para o evento novo.
  *
  * Quem chama este conversor é o {@link AtualizadorAgenda}.
@@ -40,15 +39,13 @@ public class EventoMarcadoConversor {
     private final EventoRepository eventoRepository;
     private final EnsaioRepository ensaioRepository;
     private final EncontroRepository encontroRepository;
-    private final MusicoRepository musicoRepository;
 
     public EventoMarcadoConversor(EventoMarcadoRepository eventoMarcadoRepository, EventoRepository eventoRepository,
-            EnsaioRepository ensaioRepository, EncontroRepository encontroRepository, MusicoRepository musicoRepository) {
+            EnsaioRepository ensaioRepository, EncontroRepository encontroRepository) {
         this.eventoMarcadoRepository = eventoMarcadoRepository;
         this.eventoRepository = eventoRepository;
         this.ensaioRepository = ensaioRepository;
         this.encontroRepository = encontroRepository;
-        this.musicoRepository = musicoRepository;
     }
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -80,17 +77,6 @@ public class EventoMarcadoConversor {
         }
     }
 
-    // Músicos ativos: todos começam com presença nos ensaios e eventos registrados
-    private List<Musico> musicosAtivos() {
-        List<Musico> ativos = new ArrayList<>();
-        for (Musico musico : musicoRepository.findByTipoIgnoreCase("musico")) {
-            if (musico.estaAtivo()) {
-                ativos.add(musico);
-            }
-        }
-        return ativos;
-    }
-
     private Evento paraEvento(EventoMarcado marcado) {
         Evento evento = new Evento();
         evento.setData(LocalDateTime.of(marcado.getData(), marcado.getHora()).format(FORMATO_EVENTO));
@@ -100,11 +86,10 @@ public class EventoMarcadoConversor {
         evento.setBanner(marcado.getBanner());
         evento.setMaestro(marcado.getMaestro());
 
-        // Todos os músicos ativos ficam escalados e começam com presença;
-        // quem respondeu "Não vou" começa com falta
+        // Só quem respondeu à enquete entra: "Vou" com presença e "Não vou" com falta
         List<Musico> recusados = marcado.getRecusados() == null
                 ? new ArrayList<>() : new ArrayList<>(marcado.getRecusados());
-        List<Musico> escalados = PresencaPadrao.escalados(musicosAtivos(), marcado.getInteressados(), recusados);
+        List<Musico> escalados = PresencaPadrao.escalados(marcado.getInteressados(), recusados);
         evento.setMusicos(escalados);
         evento.setPresencas(PresencaPadrao.presentes(escalados, recusados));
         evento.setFaltas(recusados);
