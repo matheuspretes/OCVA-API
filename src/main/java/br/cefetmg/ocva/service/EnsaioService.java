@@ -56,6 +56,10 @@ public class EnsaioService {
         ensaio.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), null));
         definirEvento(ensaio, dto);
         ensaio.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), null));
+        // Todos os músicos escalados começam com presença
+        ensaio.setPresencas(new ArrayList<>());
+        ensaio.setFaltas(new ArrayList<>());
+        PresencaPadrao.atualizar(ensaio.getMusicos(), ensaio.getPresencas(), ensaio.getFaltas());
         ensaio.setCriador(dto.getCriadorId() == null ? null : buscarMusico(dto.getCriadorId()));
         ensaio.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
         ensaio.setPartituras(resolverPartituras(dto.getPartituraIds()));
@@ -82,6 +86,14 @@ public class EnsaioService {
         ensaio.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), ensaio.getMaestro()));
         definirEvento(ensaio, dto);
         ensaio.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), ensaio.getMusicos()));
+        // Quem entrou na escalação ganha presença; quem saiu perde a marcação
+        if (ensaio.getPresencas() == null) {
+            ensaio.setPresencas(new ArrayList<>());
+        }
+        if (ensaio.getFaltas() == null) {
+            ensaio.setFaltas(new ArrayList<>());
+        }
+        PresencaPadrao.atualizar(ensaio.getMusicos(), ensaio.getPresencas(), ensaio.getFaltas());
         if (dto.getCriadorId() != null) {
             ensaio.setCriador(buscarMusico(dto.getCriadorId()));
         }
@@ -99,21 +111,15 @@ public class EnsaioService {
         Ensaio ensaio = buscarEnsaio(ensaioId);
         Musico musico = buscarMusico(musicoId);
 
-        boolean jaMarcado = (ensaio.getPresencas() != null && ensaio.getPresencas().stream()
-                .anyMatch(item -> item.getId().equals(musicoId)))
-                || (ensaio.getFaltas() != null && ensaio.getFaltas().stream()
-                .anyMatch(item -> item.getId().equals(musicoId)));
-        if (jaMarcado) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "A presença deste músico já foi marcada");
-        }
-
+        // Todo músico já começa com presença, então marcar de novo troca a marcação anterior
         if (ensaio.getPresencas() == null) {
             ensaio.setPresencas(new ArrayList<>());
         }
         if (ensaio.getFaltas() == null) {
             ensaio.setFaltas(new ArrayList<>());
         }
+        ensaio.getPresencas().removeIf(item -> musicoId.equals(item.getId()));
+        ensaio.getFaltas().removeIf(item -> musicoId.equals(item.getId()));
         (presente ? ensaio.getPresencas() : ensaio.getFaltas()).add(musico);
         return new EnsaioResponseDTO(ensaioRepository.save(ensaio));
     }
