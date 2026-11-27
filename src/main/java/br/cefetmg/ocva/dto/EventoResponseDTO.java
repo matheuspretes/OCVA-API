@@ -18,6 +18,7 @@ public class EventoResponseDTO {
     private final String titulo;
     private final String local;
     private final String banner;
+    private final MusicoResumoDTO maestro;
     private final List<MusicoResumoDTO> musicos;
     private final List<MusicoResumoDTO> presencas;
     private final List<MusicoResumoDTO> faltas;
@@ -29,6 +30,7 @@ public class EventoResponseDTO {
         this.data = evento.getData();
         this.descricao = evento.getDescricao();
         this.titulo = evento.getTitulo();
+        this.maestro = evento.getMaestro() == null ? null : new MusicoResumoDTO(evento.getMaestro());
         this.local = evento.getLocal();
         this.banner = evento.getBanner();
         this.musicos = converter(evento.getMusicos());

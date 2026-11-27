@@ -1,5 +1,7 @@
 package br.cefetmg.ocva.dto;
 
+import java.util.List;
+
 import lombok.Getter;
 import lombok.Setter;
 
@@ -14,6 +16,7 @@ public class MusicoRequestDTO {
     private String senha;
     private String tipo;
     private String instrumento;
+    private List<String> instrumentos;
     private String codigoAcesso;
     private Boolean ativo;
 }

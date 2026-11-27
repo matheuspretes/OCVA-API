@@ -32,14 +32,16 @@ public class EncontroService {
     private final EncontroRepository encontroRepository;
     private final TipoEncontroRepository tipoRepository;
     private final MusicoRepository musicoRepository;
-    private final EncontroConversor conversor;
+    private final AtualizadorAgenda atualizador;
+    private final AgendaReferencias referencias;
 
     public EncontroService(EncontroRepository encontroRepository, TipoEncontroRepository tipoRepository,
-            MusicoRepository musicoRepository, EncontroConversor conversor) {
+            MusicoRepository musicoRepository, AtualizadorAgenda atualizador, AgendaReferencias referencias) {
         this.encontroRepository = encontroRepository;
         this.tipoRepository = tipoRepository;
         this.musicoRepository = musicoRepository;
-        this.conversor = conversor;
+        this.atualizador = atualizador;
+        this.referencias = referencias;
     }
 
     // ---------- Tipos ----------
@@ -77,18 +79,39 @@ public class EncontroService {
 
     // ---------- Encontros ----------
 
+    /** Encontros que ainda não aconteceram, do mais próximo para o mais distante. */
     @Transactional
     public List<EncontroResponseDTO> listar() {
-        conversor.converterEncontrosPassados();
-        return encontroRepository.findByDataGreaterThanEqualOrderByDataAscHoraAsc(EncontroConversor.hoje())
-                .stream().map(EncontroResponseDTO::new).toList();
+        atualizador.atualizar();
+        List<EncontroResponseDTO> futuros = new ArrayList<>();
+        for (Encontro encontro : encontroRepository.findAllByOrderByDataAscHoraAsc()) {
+            if (!EncontroConversor.jaPassou(encontro.getData(), encontro.getHora())) {
+                futuros.add(new EncontroResponseDTO(encontro));
+            }
+        }
+        return futuros;
+    }
+
+    /**
+     * Encontros que já aconteceram e não são ensaios (ex.: reuniões), do mais recente para o mais antigo.
+     * Os do tipo "Ensaio" viram ensaio e são listados em /ensaios.
+     */
+    @Transactional
+    public List<EncontroResponseDTO> listarPassados() {
+        atualizador.atualizar();
+        List<EncontroResponseDTO> passados = new ArrayList<>();
+        for (Encontro encontro : encontroRepository.findAllByOrderByDataAscHoraAsc()) {
+            if (EncontroConversor.jaPassou(encontro.getData(), encontro.getHora())) {
+                passados.add(0, new EncontroResponseDTO(encontro));
+            }
+        }
+        return passados;
     }
 
     @Transactional
     public EncontroResponseDTO proximo() {
-        conversor.converterEncontrosPassados();
-        return encontroRepository.findByDataGreaterThanEqualOrderByDataAscHoraAsc(EncontroConversor.hoje())
-                .stream().findFirst().map(EncontroResponseDTO::new).orElse(null);
+        List<EncontroResponseDTO> futuros = listar();
+        return futuros.isEmpty() ? null : futuros.get(0);
     }
 
     @Transactional(readOnly = true)
@@ -180,6 +203,17 @@ public class EncontroService {
         encontro.setTitulo(titulo);
         encontro.setDescricao(descricao);
         encontro.setTipo(tipo);
+        encontro.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), encontro.getMaestro()));
+
+        // Só ensaios ficam ligados a um evento
+        if (tipo.ehEnsaio()) {
+            referencias.validarEventoDoEnsaio(dto.getEventoMarcadoId(), dto.getEventoId());
+            encontro.setEventoMarcado(referencias.buscarEventoMarcado(dto.getEventoMarcadoId()));
+            encontro.setEvento(referencias.buscarEvento(dto.getEventoId()));
+        } else {
+            encontro.setEventoMarcado(null);
+            encontro.setEvento(null);
+        }
         if (novo || dto.getCriadorId() != null) {
             encontro.setCriador(dto.getCriadorId() == null ? null : buscarMusico(dto.getCriadorId()));
         }

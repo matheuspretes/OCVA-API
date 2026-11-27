@@ -17,6 +17,7 @@ public class EventoMarcadoResponseDTO {
     private final String descricao;
     private final String banner;
     private final MusicoResumoDTO criador;
+    private final MusicoResumoDTO maestro;
     private final List<MusicoResumoDTO> interessados;
     private final List<MusicoResumoDTO> recusados;
 
@@ -25,6 +26,7 @@ public class EventoMarcadoResponseDTO {
         this.data = evento.getData() == null ? null : evento.getData().toString();
         this.hora = evento.getHora() == null ? null : evento.getHora().toString();
         this.titulo = evento.getTitulo();
+        this.maestro = evento.getMaestro() == null ? null : new MusicoResumoDTO(evento.getMaestro());
         this.local = evento.getLocal();
         this.descricao = evento.getDescricao();
         this.banner = evento.getBanner();

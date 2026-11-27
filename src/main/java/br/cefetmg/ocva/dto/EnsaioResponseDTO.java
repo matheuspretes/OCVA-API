@@ -21,6 +21,8 @@ public class EnsaioResponseDTO {
     private final List<MusicoResumoDTO> presencas;
     private final List<MusicoResumoDTO> faltas;
     private final MusicoResumoDTO criador;
+    private final MusicoResumoDTO maestro;
+    private final EventoResumoDTO evento;
     private final List<InstrumentoNecessarioResponseDTO> instrumentos;
     private final List<Partitura> partituras;
 
@@ -29,6 +31,8 @@ public class EnsaioResponseDTO {
         this.data = ensaio.getData();
         this.descricao = ensaio.getDescricao();
         this.titulo = ensaio.getTitulo();
+        this.maestro = ensaio.getMaestro() == null ? null : new MusicoResumoDTO(ensaio.getMaestro());
+        this.evento = EventoResumoDTO.de(ensaio.getEventoMarcado(), ensaio.getEvento());
         this.tipo = ensaio.getTipo();
         this.musicos = converter(ensaio.getMusicos());
         this.presencas = converter(ensaio.getPresencas());

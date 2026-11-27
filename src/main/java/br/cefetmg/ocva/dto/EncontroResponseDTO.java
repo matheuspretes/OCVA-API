@@ -17,6 +17,8 @@ public class EncontroResponseDTO {
     private final String descricao;
     private final TipoEncontro tipo;
     private final MusicoResumoDTO criador;
+    private final MusicoResumoDTO maestro;
+    private final EventoResumoDTO evento;
     private final List<MusicoResumoDTO> interessados;
     private final List<MusicoResumoDTO> recusados;
 
@@ -25,6 +27,8 @@ public class EncontroResponseDTO {
         this.data = encontro.getData() == null ? null : encontro.getData().toString();
         this.hora = encontro.getHora() == null ? null : encontro.getHora().toString();
         this.titulo = encontro.getTitulo();
+        this.maestro = encontro.getMaestro() == null ? null : new MusicoResumoDTO(encontro.getMaestro());
+        this.evento = EventoResumoDTO.de(encontro.getEventoMarcado(), encontro.getEvento());
         this.descricao = encontro.getDescricao();
         this.tipo = encontro.getTipo();
         this.criador = encontro.getCriador() == null ? null : new MusicoResumoDTO(encontro.getCriador());

@@ -69,6 +69,21 @@ public class Ensaio {
     @JoinColumn(name = "criador_id")
     private Musico criador;
 
+    // Maestro responsável
+    @ManyToOne
+    @JoinColumn(name = "maestro_id")
+    private Musico maestro;
+
+    // Evento para o qual o ensaio está sendo preparado.
+    // Fica em "eventoMarcado" enquanto o evento não acontece e passa para "evento" depois.
+    @ManyToOne
+    @JoinColumn(name = "evento_marcado_id")
+    private EventoMarcado eventoMarcado;
+
+    @ManyToOne
+    @JoinColumn(name = "evento_id")
+    private Evento evento;
+
     @ElementCollection
     @CollectionTable(
         name = "ensaio_instrumento",

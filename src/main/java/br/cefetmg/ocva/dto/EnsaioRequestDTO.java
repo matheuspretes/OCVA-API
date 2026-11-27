@@ -11,6 +11,10 @@ import lombok.Setter;
 public class EnsaioRequestDTO {
 
     private Long id;
+    private Long maestroId;
+    // Evento do ensaio: preencha só um dos dois
+    private Long eventoMarcadoId;
+    private Long eventoId;
     private String data;
     private String descricao;
     private String titulo;

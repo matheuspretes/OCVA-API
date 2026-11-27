@@ -8,6 +8,10 @@ import lombok.Setter;
 public class EncontroRequestDTO {
 
     private Long id;
+    private Long maestroId;
+    // Evento do ensaio: preencha só um dos dois
+    private Long eventoMarcadoId;
+    private Long eventoId;
     // aaaa-mm-dd
     private String data;
     // hh:mm

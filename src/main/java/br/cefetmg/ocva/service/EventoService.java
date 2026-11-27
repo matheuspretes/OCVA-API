@@ -2,18 +2,21 @@ package br.cefetmg.ocva.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.cefetmg.ocva.model.Encontro;
+import br.cefetmg.ocva.model.Ensaio;
 import br.cefetmg.ocva.model.Evento;
 import br.cefetmg.ocva.model.Musico;
 import br.cefetmg.ocva.model.Partitura;
 import br.cefetmg.ocva.dto.EventoRequestDTO;
 import br.cefetmg.ocva.dto.EventoResponseDTO;
+import br.cefetmg.ocva.repository.EncontroRepository;
+import br.cefetmg.ocva.repository.EnsaioRepository;
 import br.cefetmg.ocva.repository.EventoRepository;
 import br.cefetmg.ocva.repository.MusicoRepository;
 import br.cefetmg.ocva.repository.PartituraRepository;
@@ -24,21 +27,32 @@ public class EventoService {
     private final EventoRepository eventoRepository;
     private final MusicoRepository musicoRepository;
     private final PartituraRepository partituraRepository;
+    private final EnsaioRepository ensaioRepository;
+    private final EncontroRepository encontroRepository;
+    private final AtualizadorAgenda atualizador;
+    private final AgendaReferencias referencias;
 
     public EventoService(EventoRepository eventoRepository, MusicoRepository musicoRepository,
-            PartituraRepository partituraRepository) {
+            PartituraRepository partituraRepository, EnsaioRepository ensaioRepository,
+            EncontroRepository encontroRepository, AtualizadorAgenda atualizador, AgendaReferencias referencias) {
         this.eventoRepository = eventoRepository;
         this.musicoRepository = musicoRepository;
         this.partituraRepository = partituraRepository;
+        this.ensaioRepository = ensaioRepository;
+        this.encontroRepository = encontroRepository;
+        this.atualizador = atualizador;
+        this.referencias = referencias;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<EventoResponseDTO> listar() {
+        atualizador.atualizar();
         return eventoRepository.findAll().stream().map(EventoResponseDTO::new).toList();
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public EventoResponseDTO buscarPorId(Long id) {
+        atualizador.atualizar();
         return eventoRepository.findById(id).map(EventoResponseDTO::new).orElse(null);
     }
 
@@ -48,7 +62,8 @@ public class EventoService {
 
         Evento evento = converter(dto);
         evento.setId(null);
-        evento.setMusicos(resolverMusicos(dto.getMusicoIds()));
+        evento.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), null));
+        evento.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), null));
         evento.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
         evento.setPartituras(resolverPartituras(dto.getPartituraIds()));
         return new EventoResponseDTO(eventoRepository.save(evento));
@@ -74,7 +89,8 @@ public class EventoService {
         existente.setTitulo(dto.getTitulo());
         existente.setLocal(dto.getLocal());
         existente.setBanner(dto.getBanner());
-        existente.setMusicos(resolverMusicos(dto.getMusicoIds()));
+        existente.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), existente.getMaestro()));
+        existente.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), existente.getMusicos()));
         existente.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
         existente.setPartituras(resolverPartituras(dto.getPartituraIds()));
         return new EventoResponseDTO(eventoRepository.save(existente));
@@ -89,6 +105,14 @@ public class EventoService {
         evento.setPresencas(new ArrayList<>());
         evento.setFaltas(new ArrayList<>());
         evento.setPartituras(new ArrayList<>());
+
+        // Os ensaios do evento ficam sem evento
+        for (Ensaio ensaio : ensaioRepository.findByEventoId(id)) {
+            ensaio.setEvento(null);
+        }
+        for (Encontro encontro : encontroRepository.findByEventoId(id)) {
+            encontro.setEvento(null);
+        }
         eventoRepository.saveAndFlush(evento);
         eventoRepository.delete(evento);
         return new EventoResponseDTO(evento);
@@ -134,24 +158,6 @@ public class EventoService {
     private Musico buscarMusico(Long id) {
         return musicoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Músico não encontrado"));
-    }
-
-    private List<Musico> resolverMusicos(List<Long> ids) {
-        if (ids == null) {
-            return new ArrayList<>();
-        }
-        return ids.stream()
-                .map(id -> {
-                    if (id == null) {
-                        throw new ResponseStatusException(
-                                HttpStatus.BAD_REQUEST, "Todo músico deve possuir id");
-                    }
-                    return musicoRepository.findById(id)
-                            .orElseThrow(() -> new ResponseStatusException(
-                                    HttpStatus.NOT_FOUND,
-                                    "Músico com id: " + id + " não encontrado"));
-                })
-                .collect(Collectors.toList());
     }
 
     private void validarData(String data, Long eventoId) {

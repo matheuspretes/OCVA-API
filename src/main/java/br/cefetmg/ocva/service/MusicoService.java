@@ -2,6 +2,7 @@ package br.cefetmg.ocva.service;
 
 import java.time.LocalDateTime;
 import java.util.Locale;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.HttpStatus;
@@ -66,7 +67,11 @@ public class MusicoService {
         musico.setLogin(dados.getLogin());
         musico.setSenha(dados.getSenha() == null || dados.getSenha().isBlank() ? senhaAtual : dados.getSenha());
         musico.setTipo(dados.getTipo());
-        musico.setInstrumento(dados.getInstrumento());
+        // Se a lista de instrumentos não veio, mantém a atual
+        if (!dados.getInstrumentos().isEmpty()) {
+            musico.setInstrumentos(dados.getInstrumentos());
+            musico.setInstrumento(dados.getInstrumento());
+        }
         musico.setAtivo(dados.getAtivo() == null ? true : dados.getAtivo());
         if (!musicoRepository.existsById(musico.getId())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -124,6 +129,42 @@ public class MusicoService {
         codigoAcessoRepository.save(codigoAcesso);
     }
 
+    /**
+     * Aceita a lista "instrumentos" ou o campo antigo "instrumento".
+     * O primeiro da lista fica como instrumento principal.
+     */
+    private void definirInstrumentos(Musico musico, MusicoRequestDTO dto) {
+        List<String> lista = new ArrayList<>();
+        if (dto.getInstrumentos() != null) {
+            for (String nome : dto.getInstrumentos()) {
+                adicionarInstrumento(lista, nome);
+            }
+        }
+        if (lista.isEmpty()) {
+            adicionarInstrumento(lista, dto.getInstrumento());
+        }
+
+        musico.setInstrumentos(lista);
+        musico.setInstrumento(lista.isEmpty() ? null : lista.get(0));
+    }
+
+    private void adicionarInstrumento(List<String> lista, String nome) {
+        if (nome == null || nome.isBlank()) {
+            return;
+        }
+        String limpo = nome.trim();
+        if (limpo.length() > 60) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O nome do instrumento pode ter no máximo 60 caracteres.");
+        }
+        for (String item : lista) {
+            if (item.equalsIgnoreCase(limpo)) {
+                return;
+            }
+        }
+        lista.add(limpo);
+    }
+
     private Musico converter(MusicoRequestDTO dto) {
         Musico musico = new Musico();
         musico.setIdade(dto.getIdade());
@@ -131,7 +172,7 @@ public class MusicoService {
         musico.setLogin(dto.getLogin());
         musico.setSenha(dto.getSenha());
         musico.setTipo(dto.getTipo());
-        musico.setInstrumento(dto.getInstrumento());
+        definirInstrumentos(musico, dto);
         musico.setCodigoAcesso(dto.getCodigoAcesso());
         musico.setAtivo(dto.getAtivo());
         return musico;

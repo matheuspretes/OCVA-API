@@ -1,5 +1,7 @@
 package br.cefetmg.ocva.dto;
 
+import java.util.List;
+
 import br.cefetmg.ocva.model.Musico;
 import lombok.Getter;
 
@@ -9,6 +11,7 @@ public class MusicoResumoDTO {
     private final Long id;
     private final String nome;
     private final String instrumento;
+    private final List<String> instrumentos;
     private final String tipo;
     private final Boolean ativo;
 
@@ -16,6 +19,7 @@ public class MusicoResumoDTO {
         this.id = musico.getId();
         this.nome = musico.getNome();
         this.instrumento = musico.getInstrumento();
+        this.instrumentos = musico.listaDeInstrumentos();
         this.tipo = musico.getTipo();
         this.ativo = musico.getAtivo();
     }

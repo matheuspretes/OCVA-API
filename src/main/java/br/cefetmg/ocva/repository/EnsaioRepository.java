@@ -18,6 +18,11 @@ public interface EnsaioRepository extends JpaRepository<Ensaio, Long> {
 	// Verifica se já existe outro ensaio no mesmo dia (data começa com "aaaa-mm-dd")
 	boolean existsByDataStartingWithAndIdNot(String dia, Long id);
 
+	// Ensaios ligados a um evento
+	List<Ensaio> findByEventoMarcadoId(Long eventoMarcadoId);
+
+	List<Ensaio> findByEventoId(Long eventoId);
+
 	// Ensaios que usam uma partitura
 	List<Ensaio> findByPartiturasId(Long partituraId);
 }

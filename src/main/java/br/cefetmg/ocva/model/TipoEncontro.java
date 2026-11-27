@@ -26,4 +26,9 @@ public class TipoEncontro {
 
     @Column(length = 40, nullable = false, unique = true)
     private String nome;
+
+    // Encontros do tipo "Ensaio" viram ensaio quando passam e precisam de um evento
+    public boolean ehEnsaio() {
+        return "ensaio".equalsIgnoreCase(nome == null ? "" : nome.trim());
+    }
 }

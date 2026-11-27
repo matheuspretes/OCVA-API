@@ -8,9 +8,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import br.cefetmg.ocva.model.EventoMarcado;
 
 public interface EventoMarcadoRepository extends JpaRepository<EventoMarcado, Long> {
-    // Eventos de hoje em diante, do mais próximo para o mais distante
-    List<EventoMarcado> findByDataGreaterThanEqualOrderByDataAscHoraAsc(LocalDate data);
+    // Todos os eventos marcados, do mais próximo para o mais distante
+    List<EventoMarcado> findAllByOrderByDataAscHoraAsc();
 
-    // Eventos cujo dia já passou (serão convertidos em eventos realizados)
-    List<EventoMarcado> findByDataBefore(LocalDate data);
+    // Eventos cujo dia é até a data informada (usado para achar os que já passaram)
+    List<EventoMarcado> findByDataLessThanEqual(LocalDate data);
 }
