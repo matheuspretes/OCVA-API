@@ -23,8 +23,8 @@ import br.cefetmg.ocva.repository.EventoRepository;
 
 /**
  * Transforma em {@link Evento} todo evento marcado cujo horário já passou.
- * Quem respondeu "Vou" vira participante do evento e fica com presença,
- * que pode ser trocada por falta depois.
+ * Só quem respondeu à enquete entra no evento: "Vou" com presença e "Não vou"
+ * com falta. A marcação pode ser trocada depois.
  * Os ensaios e encontros ligados ao evento marcado passam a apontar para o evento novo.
  *
  * Quem chama este conversor é o {@link AtualizadorAgenda}.
@@ -86,11 +86,13 @@ public class EventoMarcadoConversor {
         evento.setBanner(marcado.getBanner());
         evento.setMaestro(marcado.getMaestro());
 
-        List<Musico> participantes = marcado.getInteressados() == null
-                ? new ArrayList<>() : new ArrayList<>(marcado.getInteressados());
-        evento.setMusicos(participantes);
-        evento.setPresencas(new ArrayList<>(participantes));
-        evento.setFaltas(new ArrayList<>());
+        // Só quem respondeu à enquete entra: "Vou" com presença e "Não vou" com falta
+        List<Musico> recusados = marcado.getRecusados() == null
+                ? new ArrayList<>() : new ArrayList<>(marcado.getRecusados());
+        List<Musico> escalados = PresencaPadrao.escalados(marcado.getInteressados(), recusados);
+        evento.setMusicos(escalados);
+        evento.setPresencas(PresencaPadrao.presentes(escalados, recusados));
+        evento.setFaltas(recusados);
         evento.setInstrumentos(new ArrayList<>());
         evento.setPartituras(new ArrayList<>());
         return evento;

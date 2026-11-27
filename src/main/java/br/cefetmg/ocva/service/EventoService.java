@@ -64,6 +64,10 @@ public class EventoService {
         evento.setId(null);
         evento.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), null));
         evento.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), null));
+        // Todos os músicos escalados começam com presença
+        evento.setPresencas(new ArrayList<>());
+        evento.setFaltas(new ArrayList<>());
+        PresencaPadrao.atualizar(evento.getMusicos(), evento.getPresencas(), evento.getFaltas());
         evento.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
         evento.setPartituras(resolverPartituras(dto.getPartituraIds()));
         return new EventoResponseDTO(eventoRepository.save(evento));
@@ -91,6 +95,14 @@ public class EventoService {
         existente.setBanner(dto.getBanner());
         existente.setMaestro(referencias.buscarMaestro(dto.getMaestroId(), existente.getMaestro()));
         existente.setMusicos(referencias.buscarMusicos(dto.getMusicoIds(), existente.getMusicos()));
+        // Quem entrou na escalação ganha presença; quem saiu perde a marcação
+        if (existente.getPresencas() == null) {
+            existente.setPresencas(new ArrayList<>());
+        }
+        if (existente.getFaltas() == null) {
+            existente.setFaltas(new ArrayList<>());
+        }
+        PresencaPadrao.atualizar(existente.getMusicos(), existente.getPresencas(), existente.getFaltas());
         existente.setInstrumentos(AgendaValidador.validarInstrumentos(dto.getInstrumentos()));
         existente.setPartituras(resolverPartituras(dto.getPartituraIds()));
         return new EventoResponseDTO(eventoRepository.save(existente));

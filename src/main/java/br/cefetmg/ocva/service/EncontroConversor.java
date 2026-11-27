@@ -6,9 +6,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +23,7 @@ import br.cefetmg.ocva.repository.EnsaioRepository;
 /**
  * Transforma em ensaio todo encontro do tipo "Ensaio" cujo horário já passou.
  * Encontros de outros tipos (ex.: Reunião) continuam salvos como encontro.
+ * Só quem respondeu à enquete entra no ensaio: "Vou" com presença e "Não vou" com falta.
  *
  * Quem chama este conversor é o {@link AtualizadorAgenda}.
  */
@@ -84,16 +83,12 @@ public class EncontroConversor {
         ensaio.setEventoMarcado(encontro.getEventoMarcado());
         ensaio.setEvento(encontro.getEvento());
 
-        List<Musico> interessados = copiar(encontro.getInteressados());
+        // Só quem respondeu à enquete entra: "Vou" com presença e "Não vou" com falta
         List<Musico> recusados = copiar(encontro.getRecusados());
+        List<Musico> escalados = PresencaPadrao.escalados(encontro.getInteressados(), recusados);
 
-        // Quem respondeu à enquete fica convocado; "Vou" vira presença e "Não vou" vira falta
-        Map<Long, Musico> convocados = new LinkedHashMap<>();
-        interessados.forEach(m -> convocados.put(m.getId(), m));
-        recusados.forEach(m -> convocados.put(m.getId(), m));
-
-        ensaio.setMusicos(new ArrayList<>(convocados.values()));
-        ensaio.setPresencas(interessados);
+        ensaio.setMusicos(escalados);
+        ensaio.setPresencas(PresencaPadrao.presentes(escalados, recusados));
         ensaio.setFaltas(recusados);
         ensaio.setInstrumentos(new ArrayList<>());
         ensaio.setPartituras(new ArrayList<>());
